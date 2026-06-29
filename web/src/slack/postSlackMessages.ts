@@ -69,13 +69,21 @@ async function postOne(
 }
 
 /**
- * 各 SlackMessage を対応するチャンネルへ並列に投稿する。
- * - 1件の失敗は他の投稿をキャンセルしない（各々が独立して成否を返す）。
+ * 各 SlackMessage を対応するチャンネルへ逐次投稿する。
+ * - 一斉並列だとチャンネル数が増えたとき Slack のレート制限(HTTP 429)を誘発し
+ *   やすいため、1件ずつ順番に投稿してバースト送信を避ける。
+ *   （Discord へは deferred 応答済みで、本処理はバックグラウンド実行のため
+ *     逐次でも応答遅延の問題はない。）
+ * - 1件の失敗は他の投稿を止めない（各々が独立して成否を返す）。
  * - 返り値は入力 messages と同じ順序の PostResult[]。
  */
 export async function postSlackMessages(
   messages: SlackMessage[],
   botToken: string,
 ): Promise<PostResult[]> {
-  return Promise.all(messages.map((message) => postOne(message, botToken)));
+  const results: PostResult[] = [];
+  for (const message of messages) {
+    results.push(await postOne(message, botToken));
+  }
+  return results;
 }
