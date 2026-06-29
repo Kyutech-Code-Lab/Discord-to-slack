@@ -40,14 +40,22 @@ cp .env.example .env.local   # 値を埋める
 
 ### 環境変数（`.env.local`）
 
-| 変数 | 用途 |
-| --- | --- |
-| `DISCORD_PUBLIC_KEY` | 署名検証に使う公開鍵 |
-| `DISCORD_APPLICATION_ID` | アプリケーション ID |
-| `DISCORD_BOT_TOKEN` | コマンド登録に使う Bot トークン |
-| `SLACK_BOT_TOKEN` | Slack Bot トークン（`xoxb-...`、要 `chat:write`） |
-| `GOOGLE_SHEETS_CSV_URL` | 参加者情報の CSV URL |
-| `ALLOWED_DISCORD_USER_IDS` | 実行を許可するユーザー ID（カンマ区切り） |
+`APP_ENV` で test / production を切り替えます。
+
+- `APP_ENV=test` … `TEST_` 接頭辞付きの変数（テスト用 Discord / Slack / シート）を読む
+- `APP_ENV=production` または未設定 … 接頭辞なしの変数（本番）を読む
+- それ以外の値はエラー（本番への誤送信防止）
+
+動作確認はまず `APP_ENV=test` で行ってください。`pnpm register:commands` も `APP_ENV` に従います。
+
+| 変数（本番） | test 用 | 用途 |
+| --- | --- | --- |
+| `DISCORD_PUBLIC_KEY` | `TEST_DISCORD_PUBLIC_KEY` | 署名検証に使う公開鍵 |
+| `DISCORD_APPLICATION_ID` | `TEST_DISCORD_APPLICATION_ID` | アプリケーション ID |
+| `DISCORD_BOT_TOKEN` | `TEST_DISCORD_BOT_TOKEN` | コマンド登録に使う Bot トークン |
+| `SLACK_BOT_TOKEN` | `TEST_SLACK_BOT_TOKEN` | Slack Bot トークン（`xoxb-...`、要 `chat:write`） |
+| `GOOGLE_SHEETS_CSV_URL` | `TEST_GOOGLE_SHEETS_CSV_URL` | 参加者情報の CSV URL |
+| `ALLOWED_DISCORD_USER_IDS` | `TEST_ALLOWED_DISCORD_USER_IDS` | 実行を許可するユーザー ID（カンマ区切り） |
 
 ## コマンド
 
