@@ -1,36 +1,79 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# KCL Slack Announcer (web)
 
-## Getting Started
+Discord の `/announce` から Slack の各グループチャンネルへ、個人メンション付きで告知を送る最小ツールの実装本体です（Next.js App Router / Vercel Functions）。
 
-First, run the development server:
+リポジトリ全体の概要は親ディレクトリの [`../README.md`](../README.md)、詳細仕様・手順は [`../docs/SPEC.md`](../docs/SPEC.md) / [`../docs/SETUP.md`](../docs/SETUP.md) を参照してください。
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## 動作の流れ
+
+1. Discord で `/announce` を実行すると Modal（入力ダイアログ）が開く
+2. 「告知本文」と「確認欄」を入力して送信
+3. 確認欄が `SEND` でない場合は中断
+4. 許可された Discord ユーザーのみ実行可能
+5. Google Sheets CSV から `is_active=TRUE` の参加者を取得
+6. チャンネルごとにメンションをまとめたメッセージを生成
+7. Slack `chat.postMessage` で各チャンネルへ投稿
+8. 成功 / 失敗の件数を Discord（本人のみ表示）へ返す
+
+> Slack 投稿は Discord の 3 秒応答制限を超えうるため、まず deferred 応答を返し、`after()` でバックグラウンド投稿してから元メッセージを結果で更新します。
+
+## ディレクトリ構成
+
+```
+src/app/api/discord/interactions/route.ts  Interactions Endpoint（オーケストレーション）
+src/discord/verifyDiscordRequest.ts        Ed25519 署名検証（WebCrypto, 依存追加なし）
+src/discord/responses.ts                   Discord 応答生成 + followup 送信
+src/discord/constants.ts                   Interaction/Response 定数
+src/sheets/loadParticipants.ts             Google Sheets CSV 取得・パース
+src/announcement/buildSlackMessages.ts     チャンネル別メンション生成
+src/slack/postSlackMessages.ts             Slack chat.postMessage 投稿
+src/env.ts                                 環境変数アクセス
+scripts/register-commands.ts               /announce 登録スクリプト
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## セットアップ
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+pnpm install
+cp .env.example .env.local   # 値を埋める
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 環境変数（`.env.local`）
 
-## Learn More
+| 変数 | 用途 |
+| --- | --- |
+| `DISCORD_PUBLIC_KEY` | 署名検証に使う公開鍵 |
+| `DISCORD_APPLICATION_ID` | アプリケーション ID |
+| `DISCORD_BOT_TOKEN` | コマンド登録に使う Bot トークン |
+| `SLACK_BOT_TOKEN` | Slack Bot トークン（`xoxb-...`、要 `chat:write`） |
+| `GOOGLE_SHEETS_CSV_URL` | 参加者情報の CSV URL |
+| `ALLOWED_DISCORD_USER_IDS` | 実行を許可するユーザー ID（カンマ区切り） |
 
-To learn more about Next.js, take a look at the following resources:
+## コマンド
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+pnpm dev               # 開発サーバー
+pnpm build             # 本番ビルド
+pnpm register:commands # /announce を Discord に登録（.env.local が必要）
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## CSV 列定義
 
-## Deploy on Vercel
+```csv
+group_name,slack_channel_id,participant_name,slack_user_id,is_active
+team-a,C01234567,山田太郎,U012AAAA,TRUE
+team-a,C01234567,佐藤花子,U012BBBB,TRUE
+team-b,C07654321,田中次郎,U012CCCC,TRUE
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- `is_active` が `TRUE` の行だけが投稿対象
+- `participant_name` は任意列（無くても動作）
+- `slack_channel_id` / `slack_user_id` が空の行はスキップ
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Interactions Endpoint URL
+
+```
+https://YOUR_DOMAIN.vercel.app/api/discord/interactions
+```
+
+Vercel へデプロイする場合、Root Directory は `web` を指定してください。
