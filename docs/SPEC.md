@@ -96,7 +96,24 @@ team-a,C01234567,U012BBBB,TRUE
 
 8. 環境変数を設定する
 
-.env.local またはVercelのEnvironment Variablesに以下を設定します。
+.env.local またはVercelのEnvironment Variablesに設定します。
+
+APP_ENV で test / production を切り替えます。
+
+APP_ENV=test のときは TEST_ 接頭辞付きの変数（テスト用 Discord / Slack / シート）を読みます。
+APP_ENV=production または未設定のときは接頭辞なしの変数（本番）を読みます。
+それ以外の値はエラーになります（本番への誤送信を防ぐため）。
+
+動作確認はまず APP_ENV=test で、テスト用の Discord / Slack を使って行ってください。
+
+APP_ENV=test
+
+TEST_DISCORD_PUBLIC_KEY=
+TEST_DISCORD_APPLICATION_ID=
+TEST_DISCORD_BOT_TOKEN=
+TEST_SLACK_BOT_TOKEN=
+TEST_GOOGLE_SHEETS_CSV_URL=
+TEST_ALLOWED_DISCORD_USER_IDS=
 
 DISCORD_PUBLIC_KEY=
 DISCORD_APPLICATION_ID=
@@ -105,11 +122,16 @@ SLACK_BOT_TOKEN=
 GOOGLE_SHEETS_CSV_URL=
 ALLOWED_DISCORD_USER_IDS=
 
-ALLOWED_DISCORD_USER_IDS はカンマ区切りです。
+ALLOWED_DISCORD_USER_IDS（および TEST_ALLOWED_DISCORD_USER_IDS）はカンマ区切りです。
 
 例：
 
-ALLOWED_DISCORD_USER_IDS=123456789012345678,234567890123456789
+TEST_ALLOWED_DISCORD_USER_IDS=123456789012345678,234567890123456789
+
+補足：
+テスト用 Discord アプリは固有の Public Key と Interactions Endpoint URL を持ちます。テスト時はテスト用アプリの Endpoint をこのデプロイ（ローカルなら ngrok）に向けてください。
+pnpm register:commands も APP_ENV に従い、test のときはテスト用アプリへ /announce を登録します。
+Vercel 本番では APP_ENV=production（または未設定）にし、接頭辞なしの変数を設定します。
 9. ローカルで確認する
 
 依存関係をインストールします。
