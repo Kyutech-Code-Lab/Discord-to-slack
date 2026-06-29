@@ -65,6 +65,8 @@ pnpm build             # 本番ビルド
 pnpm register:commands # /announce を Discord に登録（.env.local が必要）
 ```
 
+> `register:commands` は Node が `.ts` を直接実行します。型ストリッピングが既定で有効な **Node 22.18+ / 23.6+** が必要です（`package.json` の `engines` に明記）。
+
 ## CSV 列定義
 
 ```csv

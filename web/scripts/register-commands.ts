@@ -9,7 +9,7 @@ async function main(): Promise<void> {
   const rawAppEnv = (process.env.APP_ENV ?? "").trim().toLowerCase();
   if (rawAppEnv !== "" && rawAppEnv !== "test" && rawAppEnv !== "production") {
     console.error(
-      `APP_ENV の値が不正です（test か production を指定してください）。`,
+      `APP_ENV の値が不正です: "${process.env.APP_ENV}"（test か production を指定してください）`,
     );
     process.exitCode = 1;
     return;
@@ -27,7 +27,7 @@ async function main(): Promise<void> {
     if (!applicationId) missing.push(`${prefix}DISCORD_APPLICATION_ID`);
     if (!botToken) missing.push(`${prefix}DISCORD_BOT_TOKEN`);
     console.error(
-      `環境変数が不足しています: ${missing.join(", ")}。.env.local を確認してください。`,
+      `環境変数が不足しています: ${missing.join(", ")}（.env.local を確認してください）`,
     );
     process.exitCode = 1;
     return;
