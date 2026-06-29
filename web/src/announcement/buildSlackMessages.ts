@@ -23,6 +23,9 @@ type ChannelGroup = {
  */
 function groupParticipantsByChannel(participants: Participant[]): ChannelGroup[] {
   const groups = new Map<string, ChannelGroup>();
+  // 重複判定は配列の includes だと O(n^2) になるため、
+  // 順序は userIds 配列で保ちつつ、membership 判定は Set で O(1) にする。
+  const seenByChannel = new Map<string, Set<string>>();
 
   for (const participant of participants) {
     const channelId = participant.slackChannelId?.trim();
@@ -33,12 +36,16 @@ function groupParticipantsByChannel(participants: Participant[]): ChannelGroup[]
     }
 
     let group = groups.get(channelId);
-    if (!group) {
+    let seen = seenByChannel.get(channelId);
+    if (!group || !seen) {
       group = { channelId, userIds: [] };
+      seen = new Set<string>();
       groups.set(channelId, group);
+      seenByChannel.set(channelId, seen);
     }
 
-    if (!group.userIds.includes(userId)) {
+    if (!seen.has(userId)) {
+      seen.add(userId);
       group.userIds.push(userId);
     }
   }
