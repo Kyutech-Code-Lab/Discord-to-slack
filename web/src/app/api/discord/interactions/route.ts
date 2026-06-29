@@ -88,6 +88,19 @@ function isAllowedUser(userId: string | undefined): boolean {
   return getAllowedDiscordUserIds().includes(userId);
 }
 
+/** Discord のメッセージ本文上限（約2000文字）。安全側で少し余裕を持たせる。 */
+const DISCORD_MESSAGE_MAX = 2000;
+
+/**
+ * Discord の本文上限を超えないよう content を切り詰める。
+ * 上限超過で editOriginalResponse 自体が失敗し結果が返らなくなるのを防ぐ。
+ */
+function clampForDiscord(content: string): string {
+  if (content.length <= DISCORD_MESSAGE_MAX) return content;
+  const ellipsis = "…(省略)";
+  return content.slice(0, DISCORD_MESSAGE_MAX - ellipsis.length) + ellipsis;
+}
+
 /**
  * Slack へ投稿し、結果を元メッセージへ反映する（バックグラウンド処理）。
  * Discord の 3 秒制限を超えないよう deferred 応答後に実行する。
@@ -122,14 +135,18 @@ async function processAnnouncement(
       content += `\n失敗したチャンネル:\n${lines}`;
     }
 
-    await editOriginalResponse(applicationId, interactionToken, content);
+    await editOriginalResponse(
+      applicationId,
+      interactionToken,
+      clampForDiscord(content),
+    );
   } catch (error) {
     // 失敗をユーザーへ知らせる。秘密情報は載せない（各モジュールで担保済み）。
     const detail = error instanceof Error ? error.message : "unknown error";
     await editOriginalResponse(
       applicationId,
       interactionToken,
-      `エラーが発生しました: ${detail}`,
+      clampForDiscord(`エラーが発生しました: ${detail}`),
     ).catch(() => {
       // フォローアップ自体に失敗した場合はこれ以上の手段がないため何もしない。
     });
@@ -152,7 +169,14 @@ export async function POST(request: Request): Promise<Response> {
     return new Response("invalid request signature", { status: 401 });
   }
 
-  const interaction = JSON.parse(rawBody) as Interaction;
+  // 署名は正しくても本文が壊れている場合は 400 を返す（500 で
+  // 「Interaction failed」になるのを避ける）。
+  let interaction: Interaction;
+  try {
+    interaction = JSON.parse(rawBody) as Interaction;
+  } catch {
+    return new Response("invalid request body", { status: 400 });
+  }
 
   // 1. PING -> PONG（Endpoint 検証）
   if (interaction.type === InteractionType.PING) {
