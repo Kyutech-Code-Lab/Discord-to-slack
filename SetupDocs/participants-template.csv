@@ -1,0 +1,5 @@
+group_name,slack_channel_id,participant_name,slack_user_id,is_active
+team-a,C01234567,山田太郎,U012AAAA,TRUE
+team-a,C01234567,佐藤花子,U012BBBB,TRUE
+team-b,C07654321,田中次郎,U012CCCC,TRUE
+team-b,C07654321,鈴木一郎,U012DDDD,FALSE

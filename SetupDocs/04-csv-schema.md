@@ -3,6 +3,14 @@
 `GOOGLE_SHEETS_CSV_URL` で公開する参加者シートの仕様です。
 **1行目はヘッダ**で、列は**順序ではなく列名で対応付け**ます。
 
+## 雛形（コピーして使う）
+
+- フル版: [`participants-template.csv`](./participants-template.csv)
+- 最小版（名前なし）: [`participants-template-minimal.csv`](./participants-template-minimal.csv)
+
+Google Sheets に貼り付け、値を実際の Channel ID / User ID に差し替えてください。
+（雛形の最終行は `is_active=FALSE`＝除外される例です。）
+
 ## 列定義
 
 | 列名 | 必須 | 意味 | 例 |

@@ -1,0 +1,4 @@
+group_name,slack_channel_id,slack_user_id,is_active
+team-a,C01234567,U012AAAA,TRUE
+team-a,C01234567,U012BBBB,TRUE
+team-b,C07654321,U012CCCC,TRUE
