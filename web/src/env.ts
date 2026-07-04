@@ -54,10 +54,3 @@ export const getSlackBotToken = (): string => required("SLACK_BOT_TOKEN");
 /** 参加者情報の CSV URL */
 export const getGoogleSheetsCsvUrl = (): string =>
   required("GOOGLE_SHEETS_CSV_URL");
-
-/** /announce の実行を許可する Discord ユーザーID一覧（カンマ区切り） */
-export const getAllowedDiscordUserIds = (): string[] =>
-  required("ALLOWED_DISCORD_USER_IDS")
-    .split(",")
-    .map((id) => id.trim())
-    .filter((id) => id !== "");
