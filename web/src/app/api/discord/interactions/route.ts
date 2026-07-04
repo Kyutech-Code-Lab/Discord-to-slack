@@ -7,8 +7,8 @@
  * 処理の流れ:
  *   1. Ed25519 署名検証（失敗なら 401）
  *   2. PING -> PONG
- *   3. /announce コマンド -> 許可ユーザーのみ Modal を表示
- *   4. Modal 送信 -> 許可ユーザー & 確認欄=SEND のときだけ送信
+ *   3. /announce コマンド -> Discord サーバー内なら Modal を表示
+ *   4. Modal 送信 -> サーバー内実行 & 確認欄=SEND のときだけ送信
  *      （deferred 応答を返し、Slack投稿は after() でバックグラウンド実行して
  *        結果を元メッセージに反映する）
  */
@@ -39,31 +39,28 @@ import {
   getDiscordApplicationId,
   getSlackBotToken,
   getGoogleSheetsCsvUrl,
-  getAllowedDiscordUserIds,
 } from "@/env";
 
 // 署名検証・生ボディの取得が必要なため Node ランタイムで動かす。
 export const runtime = "nodejs";
 
 /** Discord から受け取る Interaction の必要最小限の形。 */
-type InteractionUser = { id?: string };
 type ModalComponent = { custom_id?: string; value?: string };
 type ActionRowData = { components?: ModalComponent[] };
 type Interaction = {
   type: number;
   token: string;
+  guild_id?: string;
   data?: {
     name?: string;
     custom_id?: string;
     components?: ActionRowData[];
   };
-  member?: { user?: InteractionUser };
-  user?: InteractionUser;
 };
 
-/** ギルド実行は member.user.id、DM 実行は user.id にユーザーが入る。 */
-function getUserId(interaction: Interaction): string | undefined {
-  return interaction.member?.user?.id ?? interaction.user?.id;
+/** Discord サーバー内で実行された Interaction かどうか。 */
+function isGuildInteraction(interaction: Interaction): boolean {
+  return typeof interaction.guild_id === "string" && interaction.guild_id !== "";
 }
 
 /** Modal 送信データから custom_id に対応する入力値を取り出す。 */
@@ -80,12 +77,6 @@ function getModalFieldValue(
     }
   }
   return undefined;
-}
-
-/** 許可された実行者かどうか。 */
-function isAllowedUser(userId: string | undefined): boolean {
-  if (!userId) return false;
-  return getAllowedDiscordUserIds().includes(userId);
 }
 
 /** Discord のメッセージ本文上限（約2000文字）。安全側で少し余裕を持たせる。 */
@@ -183,14 +174,14 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json(pong());
   }
 
-  // 2. /announce コマンド -> 許可ユーザーに Modal を表示
+  // 2. /announce コマンド -> Discord サーバー内なら Modal を表示
   if (interaction.type === InteractionType.APPLICATION_COMMAND) {
     if (interaction.data?.name !== COMMAND_NAME) {
       return new Response("unknown command", { status: 400 });
     }
-    if (!isAllowedUser(getUserId(interaction))) {
+    if (!isGuildInteraction(interaction)) {
       return Response.json(
-        ephemeralMessage("このコマンドを実行する権限がありません。"),
+        ephemeralMessage("このコマンドはDiscordサーバー内でのみ実行できます。"),
       );
     }
     return Response.json(announceModal());
@@ -202,10 +193,10 @@ export async function POST(request: Request): Promise<Response> {
       return new Response("unknown modal", { status: 400 });
     }
 
-    // 念のため Modal 送信時も実行者を再確認する。
-    if (!isAllowedUser(getUserId(interaction))) {
+    // 念のため Modal 送信時もサーバー内実行か再確認する。
+    if (!isGuildInteraction(interaction)) {
       return Response.json(
-        ephemeralMessage("このコマンドを実行する権限がありません。"),
+        ephemeralMessage("このコマンドはDiscordサーバー内でのみ実行できます。"),
       );
     }
 
